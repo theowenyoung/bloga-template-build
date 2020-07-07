@@ -81,8 +81,8 @@ jobs:
         name: check if valid for build
         uses: actions/github-script@v2
         env:
-          templateRepo: steps.templateRepo.outputs.result
-          blogaAccessToken: steps.blogaAccessToken.outputs.result
+          templateRepo: ${{ steps.templateRepo.outputs.result }}
+          blogaAccessToken: ${{ steps.blogaAccessToken.outputs.result }}
         with:
           script: |
             if(process.env.templateRepo && process.env.blogaAccessToken){
