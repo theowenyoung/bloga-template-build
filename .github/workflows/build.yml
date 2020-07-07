@@ -8,7 +8,7 @@ env:
 jobs:
   init:
     runs-on: ubuntu-latest
-    # outpus result type is string, true will be "true"
+    # outputs result type is string, true will be "true"
     outputs:
       blogaAccessToken: ${{ steps.blogaAccessToken.outputs.result }}
       templateRepo: ${{ steps.templateRepo.outputs.result }}
@@ -106,8 +106,8 @@ jobs:
     - name: checkout template repo
       uses: actions/checkout@v2
       with:
-        repository: ${{ needs.init.outpus.templateRepo }}
-        ref: ${{ needs.init.outpus.templateBranch }}
+        repository: ${{ needs.init.outputs.templateRepo }}
+        ref: ${{ needs.init.outputs.templateBranch }}
     - name: ls
       run: ls -l
     - name: Yarn install
