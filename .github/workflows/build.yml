@@ -129,6 +129,10 @@ jobs:
           core.setOutput('result',data)
           });
         result-encoding: string
+    - name: Dump
+      env:
+        BLOGA_OPTIONS: ${{ steps.blogaOptionsData.outputs.result }}
+      run: echo $BLOGA_OPTIONS
     - name: post to bloga
       uses: CamiloGarciaLaRotta/watermelon-http-client@v1.4
       with:
