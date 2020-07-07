@@ -124,7 +124,7 @@ jobs:
       with:
         script: |
           const fs = require('fs')
-          fs.readFile('bloga-options-temp.json', (err, data) => {
+          fs.readFile('bloga-options-temp.json',{encoding:'utf8'} (err, data) => {
           if (err) throw err;
           core.setOutput('result',data)
           });
