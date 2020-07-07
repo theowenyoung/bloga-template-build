@@ -139,4 +139,5 @@ jobs:
           url: 'https://api.bloga.owenyoung.com/api/v1/templates/${{ needs.init.outputs.templateId }}'
           method: 'PATCH'
           headers: '{"Content-Type": "application/json","Authorization":"Bearer ${{ needs.init.outputs.blogaAccessToken }}"}'
-          data: ${{steps.blogaOptionsData.outputs.result}}
+          data: |
+            ${{steps.blogaOptionsData.outputs.result}}
