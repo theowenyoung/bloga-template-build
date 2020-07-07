@@ -118,13 +118,21 @@ jobs:
       run: ./node_modules/.bin/bloga-gatsby options --override --format json --path bloga-options-temp.json
     - name: cat
       run: cat bloga-options-temp.json
-    - id: blogaGatsbyOptions
-      name: get bloga gatsby options
-      run: echo "::set-output name=result::'$(cat bloga-options-temp.json)''"
+    - id: blogaOptionsData
+      name: get blogaOptionsData
+      uses: actions/github-script@v2
+      with:
+        script: |
+          const fs = require('fs')
+          fs.readFile('bloga-options-temp.json', (err, data) => {
+          if (err) throw err;
+          core.setOutput('result',data)
+          });
+        result-encoding: string
     - name: post to bloga
       uses: CamiloGarciaLaRotta/watermelon-http-client@v1.4
       with:
           url: 'https://api.bloga.owenyoung.com/api/v1/templates/${{ needs.init.outputs.templateId }}'
           method: 'PATCH'
           headers: '{"Content-Type": "application/json","Authorization":"Bearer ${{ needs.init.outputs.blogaAccessToken }}"}'
-          data: ${{steps.blogaGatsbyOptions.outputs.result}}
+          data: ${{steps.blogaOptionsData.outputs.result}}
