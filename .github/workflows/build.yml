@@ -94,7 +94,7 @@ jobs:
 
   build:
     needs: init
-    if: (needs.init.outputs.isValidForBuild == 'true')
+    # if: (needs.init.outputs.isValidForBuild == 'true')
     runs-on: ubuntu-latest
     steps:
     - name: Dump INIT_OUTPUTS
