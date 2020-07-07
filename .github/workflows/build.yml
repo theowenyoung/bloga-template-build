@@ -116,9 +116,11 @@ jobs:
       run: yarn add bloga-gatsby
     - name: Load bloga gatsby options
       run: ./node_modules/.bin/bloga-gatsby options --override --format json --path bloga-options-temp.json
+    - name: cat
+      run: cat bloga-options-temp.json
     - id: blogaGatsbyOptions
       name: get bloga gatsby options
-      run: echo "::set-output name=result::$(cat bloga-options-temp.json)"
+      run: echo "::set-output name=result::'$(cat bloga-options-temp.json)''"
     - name: post to bloga
       uses: CamiloGarciaLaRotta/watermelon-http-client@v1.4
       with:
