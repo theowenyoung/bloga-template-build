@@ -14,6 +14,8 @@ jobs:
       templateRepo: ${{ steps.templateRepo.outputs.result }}
       templateBranch: ${{ steps.templateBranch.outputs.result }}
       templateId: ${{ github.event.client_payload.template_id }}
+      isValidForBuild: ${{ steps.isValidForBuild.outputs.result }}
+
     steps:        
       - id: blogaAccessTokenResponse
         name: get bloga access token response
@@ -94,7 +96,7 @@ jobs:
 
   build:
     needs: init
-    # if: (needs.init.outputs.isValidForBuild == 'true')
+    if: (needs.init.outputs.isValidForBuild == 'true')
     runs-on: ubuntu-latest
     steps:
     - name: Dump INIT_OUTPUTS
