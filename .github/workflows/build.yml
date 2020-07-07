@@ -56,8 +56,8 @@ jobs:
         with:
           script: |
             const response = JSON.parse(process.env.RESPONSE)
-            if(response.repo){
-              return response.repo
+            if(response.data && response.data.repo){
+              return response.data.repo
             }else{
               return ""
             }
@@ -71,8 +71,8 @@ jobs:
         with:
           script: |
             const response = JSON.parse(process.env.RESPONSE)
-            if(response.branch){
-              return response.branch
+            if(response.data && response.data.branch){
+              return response.data.branch
             }else{
               return ""
             }
