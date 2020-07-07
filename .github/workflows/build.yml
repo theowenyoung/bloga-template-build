@@ -1,0 +1,159 @@
+name: Template Build
+on:
+  repository_dispatch:
+    types: [template_update]
+env:
+  BLOGA_CLIENT_ID:  ${{ secrets.BLOGA_CLIENT_ID }}
+  BLOGA_CLIENT_SECRET:  ${{ secrets.BLOGA_CLIENT_SECRET }}
+  SSH_DEPLOY_KEY: ${{secrets.SSH_DEPLOY_KEY }}
+jobs:
+  init:
+    runs-on: ubuntu-latest
+    # outpus result type is string, true will be "true"
+    outputs:
+      blogaAccessToken: ${{ steps.blogaAccessToken.outputs.result }}
+      templateUrl: ${{ steps.templateUrl.outputs.result }}
+      templateRepo: ${{ steps.templateRepo.outputs.full_name }}
+      templateBranch: ${{ steps.templateBranch.outputs.result }}
+      templateId: ${{ github.event.client_payload.template_id }}
+    steps:        
+      - id: blogaAccessTokenResponse
+        name: get bloga access token response
+        if: (env.BLOGA_CLIENT_ID) && (env.BLOGA_CLIENT_SECRET)
+        uses: CamiloGarciaLaRotta/watermelon-http-client@v1.4
+        with:
+            url: 'https://auth.owenyoung.com/api/v1/oauth/token'
+            method: 'POST'
+            headers: '{"Content-Type": "application/json"}'
+            data: '{"client_id": "${{ env.BLOGA_CLIENT_ID }}","client_secret": "${{ env.BLOGA_CLIENT_SECRET }}","grant_type":"client_credentials"}'
+      - id: blogaAccessToken
+        name: get bloga access token
+        if:  (steps.blogaAccessTokenResponse.outcome == 'success')
+        uses: actions/github-script@v2
+        env:
+          RESPONSE: ${{ steps.blogaAccessTokenResponse.outputs.response }}
+        with:
+          script: |
+            const response = JSON.parse(process.env.RESPONSE)
+            if(response.data.access_token){
+              return response.data.access_token
+            }else{
+              core.setFailed(`Can not get bloga access token`);
+            }
+          result-encoding: string
+      - id: blogaTemplateResponse
+        name: get bloga template response
+        if: (github.event.client_payload.template_id)
+        uses: CamiloGarciaLaRotta/watermelon-http-client@v1.4
+        with:
+            url: https://api.bloga.owenyoung.com/api/v1/templates/${{ github.event.client_payload.template_id }}
+            method: 'GET'
+            headers: '{"Content-Type": "application/json"}'
+      - id: templateUrl
+        name: get template url
+        if: steps.blogaTemplateResponse.outcome == 'success'
+        uses: actions/github-script@v2
+        env:
+          RESPONSE: ${{ steps.blogaTemplateResponse.outputs.response }}
+        with:
+          script: |
+            const response = JSON.parse(process.env.RESPONSE)
+            if(response.url){
+              return response.url
+            }else{
+              return ""
+            }
+          result-encoding: string
+      - id: templateRepo
+        name: get template repo
+        if: steps.templateUrl.outcome == 'success'
+        uses: theowenyoung/git-url-parse@v1
+        with:
+          url: ${{ steps.templateUrl.outputs.result}}
+      - id: templateBranch
+        name: get template branch
+        if: steps.blogaTemplateResponse.outcome == 'success'
+        uses: actions/github-script@v2
+        env:
+          RESPONSE: ${{ steps.blogaTemplateResponse.outputs.response }}
+        with:
+          script: |
+            const response = JSON.parse(process.env.RESPONSE)
+            if(response.branch){
+              return response.branch
+            }else{
+              return ""
+            }
+          result-encoding: string
+
+
+  build:
+    needs: init
+    runs-on: ubuntu-latest
+    steps:
+    - name: Dump INIT_OUTPUTS
+      run: echo $INIT_OUTPUTS 
+      env:
+        INIT_OUTPUTS: ${{ toJson(needs.init.outputs) }}
+    - name: checkout template repo
+      uses: actions/checkout@v2
+      with:
+        repository: ${{ needs.init.outpus.templateRepo }}
+        ref: ${{ needs.init.outpus.templateBranch }}
+    - name: Yarn install
+      run: 'yarn'
+    - name: Add Bloga-gatsby dependence
+      run: yarn add bloga-gatsby
+    - name: Load bloga gatsby options
+      run: ./node_modules/.bin/bloga-gatsby options --override --format json --path bloga-options-temp.json
+    - id: blogaGatsbyOptions
+      name: get bloga gatsby options
+      run: echo "::set-output name=result::$(cat bloga-options-temp.json)"
+    - name: post to bloga
+      uses: CamiloGarciaLaRotta/watermelon-http-client@v1.4
+      with:
+          url: 'https://api.bloga.owenyoung.com/api/v1/templates/${{ needs.init.outputs.templateId }}'
+          method: 'PATCH'
+          headers: '{"Content-Type": "application/json","Authorization":"Bearer ${{ needs.init.outputs.blogaAccessToken }}"}'
+          data: ${{steps.blogaGatsbyOptions.outputs.result}}
+post-build:
+  needs: 
+    - init
+    - build
+  runs-on: ubuntu-latest
+  name: Post Build
+  steps:
+    - name: Check if Pages Visit URl changed
+      id: isVisitUrlChanged
+      uses: actions/github-script@v2
+      env:
+        VISIT_URL: ${{ needs.init.outputs.visitUrl }}
+      with:
+        result-encoding: string
+        github-token: ${{secrets.GITHUB_TOKEN}}
+        script: |
+          return github.repos.getPages({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+          }).then((data)=>{
+            if(data.status===200 && data.data && data.data.html_url){
+              if(data.data.html_url === process.env.VISIT_URL){
+                return false
+              }else{
+                return data.data.html_url
+              }
+            }else{
+              return false
+            }
+          }).catch(e=>{
+            core.error(`Get page info error, ${e}`)
+            return false;
+          })
+    - name: Change visit url
+      if: steps.isVisitUrlChanged.outputs.result != 'false' && needs.init.outputs.blogaAccessToken
+      uses: CamiloGarciaLaRotta/watermelon-http-client@v1.4
+      with:
+          url: 'https://api.bloga.owenyoung.com/api/v1/sites/${{ needs.init.outputs.blogaSiteId }}'
+          method: 'PATCH'
+          headers: '{"Content-Type": "application/json","Authorization":"Bearer ${{ needs.init.outputs.blogaAccessToken }}"}'
+          data: '{"visit_url":"${{steps.isVisitUrlChanged.outputs.result}}"}'
