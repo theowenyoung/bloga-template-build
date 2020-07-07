@@ -108,6 +108,8 @@ jobs:
       with:
         repository: ${{ needs.init.outpus.templateRepo }}
         ref: ${{ needs.init.outpus.templateBranch }}
+    - name: ls
+      run: ls -l
     - name: Yarn install
       run: 'yarn'
     - name: Add Bloga-gatsby dependence
