@@ -5,14 +5,12 @@ on:
 env:
   BLOGA_CLIENT_ID:  ${{ secrets.BLOGA_CLIENT_ID }}
   BLOGA_CLIENT_SECRET:  ${{ secrets.BLOGA_CLIENT_SECRET }}
-  SSH_DEPLOY_KEY: ${{secrets.SSH_DEPLOY_KEY }}
 jobs:
   init:
     runs-on: ubuntu-latest
     # outpus result type is string, true will be "true"
     outputs:
       blogaAccessToken: ${{ steps.blogaAccessToken.outputs.result }}
-      templateUrl: ${{ steps.templateUrl.outputs.result }}
       templateRepo: ${{ steps.templateRepo.outputs.full_name }}
       templateBranch: ${{ steps.templateBranch.outputs.result }}
       templateId: ${{ github.event.client_payload.template_id }}
@@ -49,8 +47,8 @@ jobs:
             url: https://api.bloga.owenyoung.com/api/v1/templates/${{ github.event.client_payload.template_id }}
             method: 'GET'
             headers: '{"Content-Type": "application/json"}'
-      - id: templateUrl
-        name: get template url
+      - id: templateRepo
+        name: get template repo
         if: steps.blogaTemplateResponse.outcome == 'success'
         uses: actions/github-script@v2
         env:
@@ -58,18 +56,12 @@ jobs:
         with:
           script: |
             const response = JSON.parse(process.env.RESPONSE)
-            if(response.url){
-              return response.url
+            if(response.repo){
+              return response.repo
             }else{
               return ""
             }
           result-encoding: string
-      - id: templateRepo
-        name: get template repo
-        if: steps.templateUrl.outcome == 'success'
-        uses: theowenyoung/git-url-parse@v1
-        with:
-          url: ${{ steps.templateUrl.outputs.result}}
       - id: templateBranch
         name: get template branch
         if: steps.blogaTemplateResponse.outcome == 'success'
@@ -85,10 +77,24 @@ jobs:
               return ""
             }
           result-encoding: string
-
+      - id: isValidForBuild
+        name: check if valid for build
+        uses: actions/github-script@v2
+        env:
+          templateRepo: steps.templateRepo.outputs.full_name
+          blogaAccessToken: steps.blogaAccessToken.outputs.result
+        with:
+          script: |
+            if(process.env.templateRepo && process.env.blogaAccessToken){
+              return true
+            }else{
+              return false
+            }
+          result-encoding: string 
 
   build:
     needs: init
+    if: (needs.init.outputs.isValidForBuild == 'true')
     runs-on: ubuntu-latest
     steps:
     - name: Dump INIT_OUTPUTS
