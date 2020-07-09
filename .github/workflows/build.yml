@@ -127,7 +127,8 @@ jobs:
           fs.readFile('bloga-options-temp.json','utf8', (err, data) => {
           if (err) throw err;
           const obj = JSON.parse(data);
-            core.setOutput('data',JSON.stringify(obj))
+          obj.isReady = true;
+          core.setOutput('data',JSON.stringify(obj))
           });
     - name: Dump
       env:
