@@ -108,6 +108,9 @@ jobs:
       with:
         repository: ${{ needs.init.outputs.templateRepo }}
         ref: ${{ needs.init.outputs.templateBranch }}
+    - name: realTemplateBranch
+      id: realTemplateBranch
+      run: echo "::set-output name=result::$(git branch --show-current)"  
     - name: ls
       run: ls -l
     - name: Yarn install
@@ -121,6 +124,8 @@ jobs:
     - id: blogaOptionsData
       name: get blogaOptionsData
       uses: actions/github-script@v2
+      env:
+        branch: ${{ steps.realTemplateBranch.outputs.result }}
       with:
         script: |
           const fs = require('fs')
@@ -128,6 +133,7 @@ jobs:
           if (err) throw err;
           const obj = JSON.parse(data);
           obj.isReady = true;
+          obj.branch = process.env.branch;
           core.setOutput('data',JSON.stringify(obj))
           });
     - name: Dump
